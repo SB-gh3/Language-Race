@@ -1,0 +1,8 @@
+[package]
+name = "lev-rust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cmp = "1.0.0"
+psutil = "5.4.0"
