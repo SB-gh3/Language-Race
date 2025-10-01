@@ -56,22 +56,54 @@ write_tuple_elements(ofstream& os, const tuple<Args...>& t)
 //Levenshtein Algorithm
 int lev(string strA, string strB)
 {
-    if (strB.empty())
+    //Initialize variables
+    int m = strA.length();
+    int n = strB.length();
+    vector<int> v0(n + 1);
+    vector<int> v1(n + 1);
+    int deletion_cost;
+    int insertion_cost;
+    int substitution_cost;
+
+    // initialize v0 (the previous row of distances)
+    // this row is A[0][i]: edit distance from an empty s to t;
+    // that distance is the number of characters to append to s to make t.
+    for (size_t i = 0; i <= n; ++i) 
     {
-        return strA.size();
+        v0[i] = i;
     }
-    else if (strA.empty())
+
+    for (size_t i = 0; i < m; ++i) 
     {
-        return strB.size();
+        // calculate v1 (current row distances) from the previous row v0
+
+        // first element of v1 is A[i + 1][0]
+        // edit distance is delete (i + 1) chars from s to match empty t
+        v1[0] = i + 1;
+
+        for (size_t j = 0; j < n; ++j) 
+        {
+            // calculating costs for A[i + 1][j + 1]
+            deletion_cost = v0[j + 1] + 1;
+            insertion_cost = v1[j] + 1;
+
+            if (strA[i] == strB[j]) 
+            {
+                substitution_cost = v0[j];
+            } 
+            else 
+            {
+                substitution_cost = v0[j] + 1;
+            }
+
+            v1[j + 1] = min(deletion_cost, min(insertion_cost, substitution_cost));
+        }
+
+        // copy v1 (current row) to v0 (previous row) for next iteration
+        swap(v0, v1);
     }
-    else if (strA[0] == strB[0])
-    {
-        return lev(strA.substr(1), strB.substr(1));
-    }
-    else
-    {
-        return 1 + min(lev(strA.substr(1), strB), min(lev(strA, strB.substr(1)), lev(strA.substr(1), strB.substr(1))));
-    }
+
+    return v0[n];
 }
 
 int main(int argc, char* argv[]) 
@@ -79,7 +111,7 @@ int main(int argc, char* argv[])
     auto start = chrono::high_resolution_clock::now(); //Start time
     long initialMem = getMem(); //Start mem
     ifstream inputFile(argv[2]);
-    ofstream outputFile("/home/spencerb/Documents/Misc-Development/Language-Race/Ordered/output-cpp.txt");
+    ofstream outputFile(argv[3]);
     vector<tuple<string, int>> order;
 
     if (inputFile.is_open()) 
@@ -88,11 +120,18 @@ int main(int argc, char* argv[])
 
         while (getline(inputFile, line)) //Variable line gets the value of a line in inputFile
         {
-            order.push_back(make_tuple(line, lev(argv[1], line))); //Push tuple of values into vector
+            //Broken newline character fix. Makes code compatable with Windows
+            if (!line.empty() && line.back() == '\r')
+            {
+                line.pop_back();
+            }
+
+            // Calculate Levenshtein distance and store it with the line
+            order.push_back(make_tuple(line, lev(argv[1], line)));
         }
 
         //Sort Vector
-        stable_sort(order.begin(), order.end(), [](const auto& a, const auto& b) 
+        stable_sort(order.begin(), order.end(), [](const auto& a, const auto& b)
         {
             return get<1>(a) < get<1>(b);
         });
@@ -120,7 +159,7 @@ int main(int argc, char* argv[])
     auto end = chrono::high_resolution_clock::now();
     auto milliseconds = chrono::duration_cast<chrono::milliseconds>(end - start).count();
 
-    cout << "\nC++:";
-    cout << "Execution time: " << (float(milliseconds) / float(1000)) << "s" << endl;
+    cout << "\nC++:" << endl;
+    cout << "Execution time: " << milliseconds << "ms" << endl;
     cout << "Memory increase: " << memIncrease << " MiB\n" << endl;
 }
